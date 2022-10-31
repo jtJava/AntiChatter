@@ -23,17 +23,8 @@ func main() {
 }
 
 func run() (err error) {
-	// Emulates pressing and releasing the 'A' key.
-	if err != nil {
-		return err
-	}
-
-	if err != nil {
-		return err
-	}
-
 	// Buffer size is depends on your need. The 100 is placeholder value.
-	keyboardChan := make(chan types.KeyboardEvent, 1500)
+	keyboardChan := make(chan types.KeyboardEvent, 100)
 
 	if err := keyboard.Install(handler, keyboardChan); err != nil {
 		return err
@@ -45,39 +36,32 @@ func run() (err error) {
 	signal.Notify(signalChan, os.Interrupt)
 
 	fmt.Println("start capturing keyboard input")
-
 	for {
-		select {
-		case <-time.After(5 * time.Minute):
-			fmt.Println("Received timeout signal")
-			return nil
-		case <-signalChan:
-			fmt.Println("Received shutdown signal")
-			return nil
-		case k := <-keyboardChan:
-			k.Message.String()
-			//fmt.Printf("Received %V %v\n", k.Message, k.VKCode)
-			continue
-		}
+		time.Sleep(time.Millisecond * 2)
 	}
 }
 
-var keyToTimeMap = make(map[types.VKCode]uint32)
-
-func handler(c chan<- types.KeyboardEvent) types.HOOKPROC {
+func handler(chan<- types.KeyboardEvent) types.HOOKPROC {
 	counter := 0
+	keyToUpsMap := make(map[types.VKCode]uint32)
 
 	return func(code int32, wParam, lParam uintptr) uintptr {
 		key := (*types.KBDLLHOOKSTRUCT)(unsafe.Pointer(lParam))
 		message := types.Message(wParam)
+		pressed := message == 256 || message == 260  // KEYDOWN || SYSKEYDOWN
+		released := message == 257 || message == 261 // KEYUP || SYSKEYUP
+
+		defer func() {
+			println(message)
+			if pressed {
+				keyToUpsMap[key.VKCode] = 0
+			} else if released {
+				keyToUpsMap[key.VKCode] = keyToUpsMap[key.VKCode] + 1
+			}
+		}()
 
 		if lParam == 0 {
 			goto NEXT
-		}
-
-		c <- types.KeyboardEvent{
-			Message:         types.Message(wParam),
-			KBDLLHOOKSTRUCT: *(*types.KBDLLHOOKSTRUCT)(unsafe.Pointer(lParam)),
 		}
 
 		if counter == 1 {
@@ -85,13 +69,13 @@ func handler(c chan<- types.KeyboardEvent) types.HOOKPROC {
 			goto NEXT
 		}
 
-		defer func() {
-			keyToTimeMap[key.VKCode] = key.Time
-		}()
+		if key.VKCode == 13 {
+			fmt.Printf("%v %v\n", key.VKCode, types.Message(wParam))
+		}
 
-		if key.Time-keyToTimeMap[key.VKCode] <= 25 && message == 256 {
+		if keyToUpsMap[key.VKCode] > 1 && message == 257 {
 			counter = 1
-			println("Cancelled key press with delta:", key.Time-keyToTimeMap[key.VKCode])
+			fmt.Printf("Cancelled %v with %v ups.\n", key.VKCode, keyToUpsMap[key.VKCode])
 			return 1
 		}
 	NEXT:
