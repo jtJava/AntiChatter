@@ -2,7 +2,6 @@ package main
 
 import "C"
 import (
-	"fmt"
 	"github.com/moutend/go-hook/pkg/keyboard"
 	"github.com/moutend/go-hook/pkg/types"
 	"github.com/moutend/go-hook/pkg/win32"
@@ -35,7 +34,6 @@ func run() (err error) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
 
-	fmt.Println("start capturing keyboard input")
 	for {
 		time.Sleep(time.Millisecond * 2)
 	}
