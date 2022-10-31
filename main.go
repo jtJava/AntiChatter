@@ -52,7 +52,6 @@ func handler(chan<- types.KeyboardEvent) types.HOOKPROC {
 		released := message == 257 || message == 261 // KEYUP || SYSKEYUP
 
 		defer func() {
-			println(message)
 			if pressed {
 				keyToUpsMap[key.VKCode] = 0
 			} else if released {
@@ -69,13 +68,8 @@ func handler(chan<- types.KeyboardEvent) types.HOOKPROC {
 			goto NEXT
 		}
 
-		if key.VKCode == 13 {
-			fmt.Printf("%v %v\n", key.VKCode, types.Message(wParam))
-		}
-
 		if keyToUpsMap[key.VKCode] > 1 && message == 257 {
 			counter = 1
-			fmt.Printf("Cancelled %v with %v ups.\n", key.VKCode, keyToUpsMap[key.VKCode])
 			return 1
 		}
 	NEXT:
